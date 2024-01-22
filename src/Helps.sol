@@ -9,7 +9,6 @@ struct CellGene {
     uint64 bornBlock; // Birth block
     uint64 rentedCount;
     uint256 bornPrice;
-    bytes32 evolveSeed; //Evolution random seed
     BitMaps.BitMap bitmap; //Original gene information
 }
 
@@ -19,7 +18,6 @@ struct LifeGene {
     uint64 bornBlock; // Birth block
     uint64 remainWorkTime;
     uint256 bornPrice;
-    bytes32 evolveSeed; // Evolution random seed
     BitMaps.BitMap bitmap; //Original gene information
     uint256[] parentTokenIds;
 }
@@ -45,17 +43,6 @@ struct CellAuction {
 }
 
 library Helps {
-    function getEvolveSeed() internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    block.number,
-                    msg.sender,
-                    blockhash(block.timestamp - 1)
-                )
-            );
-    }
-
     function getDigits(
         uint256 number
     ) internal pure returns (uint256 top, uint256 min, uint256 bottom) {

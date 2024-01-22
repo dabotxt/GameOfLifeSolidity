@@ -95,15 +95,49 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             );
     }
 
-    function createLife(uint256[][] memory cells_) public payable {
+    function getLifePrice(
+        uint256[] memory cells_
+    ) public view returns (uint256) {
+        uint256 absoluteTimeSinceStart = block.timestamp -
+            _currentCellAuction.startTime;
+        require(
+            cells_.length >= 2 && cells_.length <= 9,
+            "can only use 2-9 cells!"
+        );
+        uint256 cumulatedPrice = 0;
+        uint256[] memory usedCells = new uint256[](cells_.length);
+        for (uint i = 0; i < cells_.length; i++) {
+            uint256 tokenId = cells_[i];
+            uint256 rentedCount = _cellPool[tokenId].rentedCount;
+            for (uint j = 0; j < i; j++) {
+                if (usedCells[j] == tokenId) {
+                    rentedCount++;
+                }
+            }
+            uint256 cellRentPrice = getCellRentPrice(
+                rentedCount,
+                absoluteTimeSinceStart
+            );
+            cumulatedPrice += cellRentPrice;
+            usedCells[i] = tokenId;
+        }
+
+        return cumulatedPrice;
+    }
+
+    function createLife(uint256[][] memory cellsPositions_) public payable {
+        require(
+            cellsPositions_.length >= 2 && cellsPositions_.length <= 9,
+            "can only use 2-9 cells!"
+        );
         uint256 absoluteTimeSinceStart = block.timestamp -
             _currentCellAuction.startTime;
         uint256 cumulatedPrice = 0;
-        uint256[] memory cellGenes = new uint256[](cells_.length);
-        uint32[] memory livingCellTotals = new uint32[](cells_.length);
+        uint256[] memory cellGenes = new uint256[](cellsPositions_.length);
+        uint32[] memory livingCellTotals = new uint32[](cellsPositions_.length);
 
-        for (uint i = 0; i < cells_.length; i++) {
-            uint256 tokenId = cells_[i][0];
+        for (uint i = 0; i < cellsPositions_.length; i++) {
+            uint256 tokenId = cellsPositions_[i][0];
             CellGene storage cellGene = _cellPool[tokenId];
             uint256 cellRentPrice = getCellRentPrice(
                 cellGene.rentedCount,
@@ -122,7 +156,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         _life.createLife(
             msg.sender,
             cumulatedPrice,
-            cells_,
+            cellsPositions_,
             cellGenes,
             livingCellTotals
         );
@@ -159,6 +193,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             _currentCellAuction.sold == _currentCellAuction.maxSellable,
             "auction ongoing"
         );
+        require(startTime_ > block.timestamp, "invalid startTime");
 
         _currentCellAuction.startTime = startTime_;
         _currentCellAuction.targetPrice = targetPrice_;
@@ -172,6 +207,10 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         require(
             _currentCellAuction.sold < _currentCellAuction.maxSellable,
             "auction finished"
+        );
+        require(
+            block.timestamp > _currentCellAuction.startTime,
+            "auction not start"
         );
         uint256 price = getCurrentVRGDAPrice();
         require(msg.value >= price, "Insufficient funds");
@@ -188,7 +227,6 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         CellGene storage cell = _cellPool[tokenId];
         cell.id = tokenId;
         cell.bornBlock = uint64(block.number);
-        cell.evolveSeed = Helps.getEvolveSeed();
         cell.bitmap.setBucket(0, randomNum);
         uint32 cellCount = 0;
 
@@ -353,22 +391,6 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             return cellGenes[4];
         }
         return liveCellNum <= 1 || liveCellNum >= 4 ? 0 : 1;
-    }
-
-    function getEvolve(
-        uint256 tokenID,
-        uint256 generation
-    ) public view returns (uint256) {
-        CellGene storage cell = _cellPool[tokenID];
-        bytes32 randomNumber = keccak256(
-            abi.encodePacked(
-                generation,
-                cell.evolveSeed,
-                getGenesSequence(tokenID)
-            )
-        );
-        uint256 num = uint256(randomNumber);
-        return num % 2;
     }
 
     /* tools */

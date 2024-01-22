@@ -34,15 +34,17 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     function initialize(
         address owner_,
-        address cell_,
         string memory name_,
         string memory symbol_
     ) public initializer {
         _baseUrl = "https://api.cellula.life/token/";
-        _cell = cell_;
 
         __ERC721_init(name_, symbol_);
         __Ownable_init(owner_);
+    }
+
+    function setCellAddress(address cell_) onlyOwner {
+        _cell = cell_;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -54,10 +56,6 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         uint256[] calldata cellGenes,
         uint32[] calldata livingCellTotals
     ) external onlyCell {
-        require(
-            cellsPositions.length >= 2 && cellsPositions.length <= 9,
-            "You can only use 2-9 combinations!"
-        );
         for (uint256 i = 0; i < cellsPositions.length; i++) {
             require(cellsPositions[i][1] < 10, "position error");
             for (uint256 j = i + 1; j < cellsPositions.length; j++) {
@@ -72,7 +70,6 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         LifeGene storage newLife = _lifePool[newTokenId];
         newLife.id = newTokenId;
         newLife.bornBlock = uint64(block.number);
-        newLife.evolveSeed = Helps.getEvolveSeed();
         newLife.bornPrice = bornPrice;
 
         uint32 cellCount = 0;
@@ -235,22 +232,6 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             return cellGenes[4];
         }
         return liveCellNum <= 1 || liveCellNum >= 4 ? 0 : 1;
-    }
-
-    function getEvolve(
-        uint256 tokenID,
-        uint256 generation
-    ) public view returns (uint256) {
-        LifeGene storage cell = _lifePool[tokenID];
-        bytes32 randomNumber = keccak256(
-            abi.encodePacked(
-                generation,
-                cell.evolveSeed,
-                getGenesSequence(tokenID)
-            )
-        );
-        uint256 num = uint256(randomNumber);
-        return num % 2;
     }
 
     receive() external payable {}
