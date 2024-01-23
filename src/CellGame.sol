@@ -63,10 +63,13 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         int256 timeScale_,
         int256 perTimeUnit_
     ) public onlyOwner {
+        int256 decayConstant = wadLn(1e18 - priceDecayPercent_);
+        require(decayConstant < 0, "NON_NEGATIVE_DECAY_CONSTANT");
+
         _lifeCreationConfig.soldBySwitch = soldBySwitch_;
         _lifeCreationConfig.switchTime = switchTime_;
         _lifeCreationConfig.cellTargetRentPrice = cellTargetRentPrice_;
-        _lifeCreationConfig.priceDecayPercent = priceDecayPercent_;
+        _lifeCreationConfig.decayConstant = decayConstant;
         _lifeCreationConfig.logisticLimit = logisticLimit_;
         _lifeCreationConfig.timeScale = timeScale_;
         _lifeCreationConfig.perTimeUnit = perTimeUnit_;
@@ -194,10 +197,12 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             "auction ongoing"
         );
         require(startTime_ > block.timestamp, "invalid startTime");
+        int256 decayConstant = wadLn(1e18 - priceDecayPercent_);
+        require(decayConstant < 0, "NON_NEGATIVE_DECAY_CONSTANT");
 
         _currentCellAuction.startTime = startTime_;
         _currentCellAuction.targetPrice = targetPrice_;
-        _currentCellAuction.decayConstant = wadLn(1e18 - priceDecayPercent_);
+        _currentCellAuction.decayConstant = decayConstant;
         _currentCellAuction.perTimeUnit = perTimeUnit_;
         _currentCellAuction.maxSellable = maxSellable_;
         _currentCellAuction.startTokenID = startTokenID_;

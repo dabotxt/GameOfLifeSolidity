@@ -43,7 +43,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(owner_);
     }
 
-    function setCellAddress(address cell_) onlyOwner {
+    function setCellAddress(address cell_) onlyOwner public {
         _cell = cell_;
     }
 

@@ -26,7 +26,7 @@ struct LifeCreationConfig {
     int256 soldBySwitch;
     int256 switchTime;
     int256 cellTargetRentPrice;
-    int256 priceDecayPercent;
+    int256 decayConstant;
     int256 logisticLimit;
     int256 timeScale;
     int256 perTimeUnit;
