@@ -30,6 +30,7 @@ struct LifeCreationConfig {
     int256 logisticLimit;
     int256 timeScale;
     int256 perTimeUnit;
+    uint256 updateInterval;
 }
 
 struct CellAuction {
@@ -40,6 +41,7 @@ struct CellAuction {
     int256 targetPrice;
     int256 decayConstant;
     int256 perTimeUnit;
+    uint256 updateInterval;
 }
 
 library Helps {

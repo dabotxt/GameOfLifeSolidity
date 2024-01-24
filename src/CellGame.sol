@@ -61,7 +61,8 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         int256 priceDecayPercent_,
         int256 logisticLimit_,
         int256 timeScale_,
-        int256 perTimeUnit_
+        int256 perTimeUnit_,
+        uint256 updateInterval_
     ) public onlyOwner {
         int256 decayConstant = wadLn(1e18 - priceDecayPercent_);
         require(decayConstant < 0, "NON_NEGATIVE_DECAY_CONSTANT");
@@ -73,6 +74,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         _lifeCreationConfig.logisticLimit = logisticLimit_;
         _lifeCreationConfig.timeScale = timeScale_;
         _lifeCreationConfig.perTimeUnit = perTimeUnit_;
+        _lifeCreationConfig.updateInterval = updateInterval_;
     }
 
     function getCellRentPrice(
@@ -81,7 +83,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     ) public view returns (uint256) {
         return
             VRGDA.getVRGDAPrice(
-                toDaysWadUnsafe(absoluteTimeSinceStart),
+                toDaysWadUnsafe(
+                    absoluteTimeSinceStart -
+                        (absoluteTimeSinceStart %
+                            _lifeCreationConfig.updateInterval)
+                ),
                 _currentCellAuction.targetPrice,
                 _currentCellAuction.decayConstant,
                 // Theoretically calling toWadUnsafe with sold can silently overflow but under
@@ -163,6 +169,13 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             cellGenes,
             livingCellTotals
         );
+
+        if (msg.value > cumulatedPrice) {
+            (bool sent, ) = payable(msg.sender).call{
+                value: msg.value - cumulatedPrice
+            }(""); // Returns false on failure
+            require(sent, "failed to return Ether");
+        }
     }
 
     function getCurrentVRGDAPrice() public view returns (uint256) {
@@ -171,7 +184,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
         return
             VRGDA.getVRGDAPrice(
-                toDaysWadUnsafe(absoluteTimeSinceStart),
+                toDaysWadUnsafe(
+                    absoluteTimeSinceStart -
+                        (absoluteTimeSinceStart %
+                            _currentCellAuction.updateInterval)
+                ),
                 _currentCellAuction.targetPrice,
                 _currentCellAuction.decayConstant,
                 // Theoretically calling toWadUnsafe with sold can silently overflow but under
@@ -190,7 +207,8 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         int256 perTimeUnit_,
         uint256 startTime_,
         uint256 maxSellable_,
-        uint256 startTokenID_
+        uint256 startTokenID_,
+        uint256 updateInterval_
     ) public onlyOwner {
         require(
             _currentCellAuction.sold == _currentCellAuction.maxSellable,
@@ -206,6 +224,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         _currentCellAuction.perTimeUnit = perTimeUnit_;
         _currentCellAuction.maxSellable = maxSellable_;
         _currentCellAuction.startTokenID = startTokenID_;
+        _currentCellAuction.updateInterval = updateInterval_;
     }
 
     function mintFromAuction() public payable {
@@ -241,6 +260,13 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             }
         }
         cell.livingCellTotal = cellCount;
+
+        if (msg.value > price) {
+            (bool sent, ) = payable(msg.sender).call{value: msg.value - price}(
+                ""
+            ); // Returns false on failure
+            require(sent, "failed to return Ether");
+        }
     }
 
     //Obtain 512 unique random numbers for 10 rounds
