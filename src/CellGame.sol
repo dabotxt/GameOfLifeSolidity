@@ -106,15 +106,15 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     function getLifePrice(
         uint256[] memory cells_
-    ) public view returns (uint256) {
+    ) public view returns (uint256[] memory cellsPrice) {
         uint256 absoluteTimeSinceStart = block.timestamp -
             _currentCellAuction.startTime;
         require(
             cells_.length >= 2 && cells_.length <= 9,
             "can only use 2-9 cells!"
         );
-        uint256 cumulatedPrice = 0;
         uint256[] memory usedCells = new uint256[](cells_.length);
+        cellsPrice = new uint256[](cells_.length);
         for (uint i = 0; i < cells_.length; i++) {
             uint256 tokenId = cells_[i];
             uint256 rentedCount = _cellPool[tokenId].rentedCount;
@@ -127,11 +127,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
                 rentedCount,
                 absoluteTimeSinceStart
             );
-            cumulatedPrice += cellRentPrice;
             usedCells[i] = tokenId;
+            cellsPrice[i] = cellRentPrice;
         }
 
-        return cumulatedPrice;
+        return cellsPrice;
     }
 
     function createLife(uint256[][] memory cellsPositions_) public payable {
