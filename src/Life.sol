@@ -43,7 +43,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         __Ownable_init(owner_);
     }
 
-    function setCellAddress(address cell_) onlyOwner public {
+    function setCellAddress(address cell_) public onlyOwner {
         _cell = cell_;
     }
 
@@ -70,6 +70,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         LifeGene storage newLife = _lifePool[newTokenId];
         newLife.id = newTokenId;
         newLife.bornBlock = uint64(block.number);
+        newLife.bornTime = uint64(block.timestamp);
         newLife.bornPrice = bornPrice;
 
         uint32 cellCount = 0;

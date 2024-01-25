@@ -88,8 +88,8 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
                         (absoluteTimeSinceStart %
                             _lifeCreationConfig.updateInterval)
                 ),
-                _currentCellAuction.targetPrice,
-                _currentCellAuction.decayConstant,
+                _lifeCreationConfig.cellTargetRentPrice,
+                _lifeCreationConfig.decayConstant,
                 // Theoretically calling toWadUnsafe with sold can silently overflow but under
                 // any reasonable circumstance it will never be large enough. We use sold + 1 as
                 // the VRGDA formula's n param represents the nth token and sold is the n-1th token.
@@ -107,8 +107,6 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     function getLifePrice(
         uint256[] memory cells_
     ) public view returns (uint256[] memory cellsPrice) {
-        uint256 absoluteTimeSinceStart = block.timestamp -
-            _currentCellAuction.startTime;
         require(
             cells_.length >= 2 && cells_.length <= 9,
             "can only use 2-9 cells!"
@@ -117,7 +115,10 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         cellsPrice = new uint256[](cells_.length);
         for (uint i = 0; i < cells_.length; i++) {
             uint256 tokenId = cells_[i];
-            uint256 rentedCount = _cellPool[tokenId].rentedCount;
+            CellGene storage cellGene = _cellPool[tokenId];
+            uint256 rentedCount = cellGene.rentedCount;
+            uint256 absoluteTimeSinceStart = block.timestamp -
+                cellGene.bornTime;
             for (uint j = 0; j < i; j++) {
                 if (usedCells[j] == tokenId) {
                     rentedCount++;
@@ -139,8 +140,6 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             cellsPositions_.length >= 2 && cellsPositions_.length <= 9,
             "can only use 2-9 cells!"
         );
-        uint256 absoluteTimeSinceStart = block.timestamp -
-            _currentCellAuction.startTime;
         uint256 cumulatedPrice = 0;
         uint256[] memory cellGenes = new uint256[](cellsPositions_.length);
         uint32[] memory livingCellTotals = new uint32[](cellsPositions_.length);
@@ -148,6 +147,8 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         for (uint i = 0; i < cellsPositions_.length; i++) {
             uint256 tokenId = cellsPositions_[i][0];
             CellGene storage cellGene = _cellPool[tokenId];
+            uint256 absoluteTimeSinceStart = block.timestamp -
+                cellGene.bornTime;
             uint256 cellRentPrice = getCellRentPrice(
                 cellGene.rentedCount,
                 absoluteTimeSinceStart
@@ -251,6 +252,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         CellGene storage cell = _cellPool[tokenId];
         cell.id = tokenId;
         cell.bornBlock = uint64(block.number);
+        cell.bornTime = uint64(block.timestamp);
         cell.bitmap.setBucket(0, randomNum);
         uint32 cellCount = 0;
 
