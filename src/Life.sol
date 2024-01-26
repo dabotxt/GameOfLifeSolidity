@@ -120,7 +120,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         LifeGene storage cell = _lifePool[tokenID];
         bornBlock = cell.bornBlock;
         livingCellTotal = cell.livingCellTotal;
-        genes = decodeGenes(tokenID);
+        genes = getGenesSequence(tokenID);
         bornTime=cell.bornTime;
         remainWorkTime=cell.remainWorkTime;
         bornPrice=cell.bornPrice;

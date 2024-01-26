@@ -308,7 +308,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         CellGene storage cell = _cellPool[tokenID];
         bornBlock = cell.bornBlock;
         livingCellTotal = cell.livingCellTotal;
-        genes = decodeGenes(tokenID);
+        genes = getGenesSequence(tokenID);
         bornTime=cell.bornTime;
         rentedCount=cell.rentedCount;
         bornPrice=cell.bornPrice;
