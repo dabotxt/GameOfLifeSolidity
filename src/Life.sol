@@ -18,13 +18,12 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     address public _cell;
 
     // The internal life ID tracker
-    uint256 private _currentLifeId;
+    uint256 public _currentLifeId;
 
     mapping(uint256 => LifeGene) _lifePool;
 
     string private _baseUrl;
 
-    uint256 public _lifeMintedNum;
     /**
      * @notice Require that the sender is the minter.
      */
@@ -98,7 +97,6 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         newLife.livingCellTotal = cellCount;
 
         _mint(to, newTokenId);
-         _lifeMintedNum++;
     }
 
     //Get Cellula information
@@ -121,12 +119,11 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         bornBlock = cell.bornBlock;
         livingCellTotal = cell.livingCellTotal;
         genes = getGenesSequence(tokenID);
-        bornTime=cell.bornTime;
-        remainWorkTime=cell.remainWorkTime;
-        bornPrice=cell.bornPrice;
-        parentTokenIds=cell.parentTokenIds;
+        bornTime = cell.bornTime;
+        remainWorkTime = cell.remainWorkTime;
+        bornPrice = cell.bornPrice;
+        parentTokenIds = cell.parentTokenIds;
     }
-
 
     function getRLESting(
         uint256 tokenId

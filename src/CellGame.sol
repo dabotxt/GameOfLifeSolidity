@@ -253,6 +253,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         cell.id = tokenId;
         cell.bornBlock = uint64(block.number);
         cell.bornTime = uint64(block.timestamp);
+        cell.bornPrice = price;
         cell.bitmap.setBucket(0, randomNum);
         uint32 cellCount = 0;
 
@@ -291,7 +292,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //Get Cellula information
-    function getLifeGene(
+    function getCellGene(
         uint256 tokenID
     )
         public
@@ -300,7 +301,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             string memory genes,
             uint256 bornBlock,
             uint256 livingCellTotal,
-            uint64 bornTime, 
+            uint64 bornTime,
             uint64 rentedCount,
             uint256 bornPrice
         )
@@ -309,12 +310,10 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         bornBlock = cell.bornBlock;
         livingCellTotal = cell.livingCellTotal;
         genes = getGenesSequence(tokenID);
-        bornTime=cell.bornTime;
-        rentedCount=cell.rentedCount;
-        bornPrice=cell.bornPrice;
+        bornTime = cell.bornTime;
+        rentedCount = cell.rentedCount;
+        bornPrice = cell.bornPrice;
     }
-
- 
 
     function getRLESting(
         uint256 tokenId
