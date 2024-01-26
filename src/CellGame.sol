@@ -299,14 +299,22 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         returns (
             string memory genes,
             uint256 bornBlock,
-            uint256 livingCellTotal
+            uint256 livingCellTotal,
+            uint64 bornTime, 
+            uint64 rentedCount,
+            uint256 bornPrice
         )
     {
         CellGene storage cell = _cellPool[tokenID];
         bornBlock = cell.bornBlock;
         livingCellTotal = cell.livingCellTotal;
         genes = decodeGenes(tokenID);
+        bornTime=cell.bornTime;
+        rentedCount=cell.rentedCount;
+        bornPrice=cell.bornPrice;
     }
+
+ 
 
     function getRLESting(
         uint256 tokenId
