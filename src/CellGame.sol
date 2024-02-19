@@ -33,7 +33,20 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     mapping(uint256 tokenId => uint256) public _rentFeeCollected;
 
+    uint256 public _devFeeCollected;
+    uint256 public _poolFeeCollected;
+
     string private _baseUrl;
+
+    /**
+     * @dev The caller account is not authorized to perform an operation.
+     */
+    error MustBeNftOwner(address account);
+
+    event MintFeeReceived(uint256 tokenId, uint256 amount);
+    event MintFeeForDevReceived(uint256 amount);
+    event MintFeeForPoolReceived(uint256 amount);
+    event AuctionPriceReceived(uint256 tokenId, uint256 amount);
 
     constructor() {
         _disableInitializers();
@@ -111,6 +124,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             cells_.length >= 2 && cells_.length <= 9,
             "can only use 2-9 cells!"
         );
+
         uint256[] memory usedCells = new uint256[](cells_.length);
         cellsPrice = new uint256[](cells_.length);
         for (uint i = 0; i < cells_.length; i++) {
@@ -144,6 +158,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         uint256[] memory cellGenes = new uint256[](cellsPositions_.length);
         uint32[] memory livingCellTotals = new uint32[](cellsPositions_.length);
 
+        uint256 totalRentFeeCollected = 0;
         for (uint i = 0; i < cellsPositions_.length; i++) {
             uint256 tokenId = cellsPositions_[i][0];
             CellGene storage cellGene = _cellPool[tokenId];
@@ -157,9 +172,22 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             cellGenes[i] = cellGene.bitmap.getBucket(0);
             livingCellTotals[i] = cellGene.livingCellTotal;
             cellGene.rentedCount += 1;
-            _rentFeeCollected[tokenId] += (cellRentPrice * 70) / 100;
+
+            uint256 rentFee = (cellRentPrice * 70) / 100;
+            _rentFeeCollected[tokenId] += rentFee;
+            totalRentFeeCollected += rentFee;
+
+            emit MintFeeReceived(tokenId, rentFee);
+
             cumulatedPrice += cellRentPrice;
         }
+
+        uint256 remainFee = cumulatedPrice - totalRentFeeCollected;
+        _devFeeCollected += remainFee / 3;
+        _poolFeeCollected += remainFee - remainFee / 3;
+
+        emit MintFeeForDevReceived(remainFee / 3);
+        emit MintFeeForPoolReceived(remainFee - remainFee / 3);
 
         require(msg.value >= cumulatedPrice, "Insufficient funds");
 
@@ -262,7 +290,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
                 cellCount += 1;
             }
         }
+
         cell.livingCellTotal = cellCount;
+
+        _devFeeCollected += price;
+        emit AuctionPriceReceived(tokenId, price);
 
         if (msg.value > price) {
             (bool sent, ) = payable(msg.sender).call{value: msg.value - price}(
@@ -270,6 +302,29 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             ); // Returns false on failure
             require(sent, "failed to return Ether");
         }
+    }
+
+    function withdrawRentFee(uint256 tokenId) public {
+        address owner = _ownerOf(tokenId);
+        if (msg.sender != owner) {
+            revert MustBeNftOwner(owner);
+        }
+
+        uint256 rentFee = _rentFeeCollected[tokenId];
+        require(rentFee > 0, "no rent fee");
+        _rentFeeCollected[tokenId] = 0;
+
+        (bool sent, ) = payable(msg.sender).call{value: rentFee}(""); // Returns false on failure
+        require(sent, "failed to return Ether");
+    }
+
+    function withdrawDevFee(address withdrawTo) public onlyOwner {
+        uint256 devFee = _devFeeCollected;
+        require(devFee > 0, "no dev fee");
+        _devFeeCollected = 0;
+
+        (bool sent, ) = payable(withdrawTo).call{value: devFee}(""); // Returns false on failure
+        require(sent, "failed to return Ether");
     }
 
     //Obtain 512 unique random numbers for 10 rounds
