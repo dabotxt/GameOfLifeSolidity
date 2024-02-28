@@ -31,7 +31,9 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     uint256 public _cellMintedNum;
 
-    mapping(uint256 tokenId => uint256) public _rentFeeCollected;
+    mapping(uint256 => uint256) public _rentFeeCollected;
+
+    mapping(address => uint256) public userEnergy;
 
     uint256 public _devFeeCollected;
     uint256 public _poolFeeCollected;
@@ -58,7 +60,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         string memory name_,
         string memory symbol_
     ) public initializer {
-        _baseUrl = "https://api.cellula.life/token/";
+        _baseUrl = "https://factoryapi.cellula.fun/cellToken/";
         _life = life_;
 
         __ERC721_init(name_, symbol_);
@@ -117,9 +119,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             );
     }
 
-    function getLifePrice(
-        uint256[] memory cells_
-    ) public view returns (uint256[] memory cellsPrice) {
+    function getLifePrice(uint256[] memory cells_)
+        public
+        view
+        returns (uint256[] memory cellsPrice)
+    {
         require(
             cells_.length >= 2 && cells_.length <= 9,
             "can only use 2-9 cells!"
@@ -127,13 +131,13 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
         uint256[] memory usedCells = new uint256[](cells_.length);
         cellsPrice = new uint256[](cells_.length);
-        for (uint i = 0; i < cells_.length; i++) {
+        for (uint256 i = 0; i < cells_.length; i++) {
             uint256 tokenId = cells_[i];
             CellGene storage cellGene = _cellPool[tokenId];
             uint256 rentedCount = cellGene.rentedCount;
             uint256 absoluteTimeSinceStart = block.timestamp -
                 cellGene.bornTime;
-            for (uint j = 0; j < i; j++) {
+            for (uint256 j = 0; j < i; j++) {
                 if (usedCells[j] == tokenId) {
                     rentedCount++;
                 }
@@ -149,6 +153,13 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return cellsPrice;
     }
 
+    //withdraw eth from the contract
+    function withdraw(uint256 amount) public onlyOwner {
+        require(amount <= address(this).balance, "Insufficient balance");
+        address payable owner = payable(owner());
+        owner.transfer(amount);
+    }
+
     function createLife(uint256[][] memory cellsPositions_) public payable {
         require(
             cellsPositions_.length >= 2 && cellsPositions_.length <= 9,
@@ -159,7 +170,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         uint32[] memory livingCellTotals = new uint32[](cellsPositions_.length);
 
         uint256 totalRentFeeCollected = 0;
-        for (uint i = 0; i < cellsPositions_.length; i++) {
+        for (uint256 i = 0; i < cellsPositions_.length; i++) {
             uint256 tokenId = cellsPositions_[i][0];
             CellGene storage cellGene = _cellPool[tokenId];
             uint256 absoluteTimeSinceStart = block.timestamp -
@@ -304,18 +315,68 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function withdrawRentFee(uint256 tokenId) public {
-        address owner = _ownerOf(tokenId);
-        if (msg.sender != owner) {
-            revert MustBeNftOwner(owner);
+    function removeDuplicates(uint256[] memory array)
+        public
+        pure
+        returns (uint256[] memory)
+    {
+        uint256[] memory uniqueArray = new uint256[](array.length);
+        uint256 count = 0;
+        for (uint256 i = 0; i < array.length; i++) {
+            bool isDuplicate = false;
+            for (uint256 j = 0; j < count; j++) {
+                if (array[i] == uniqueArray[j]) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (!isDuplicate) {
+                uniqueArray[count] = array[i];
+                count++;
+            }
         }
+        uint256[] memory finalArray = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            finalArray[i] = uniqueArray[i];
+        }
+        return finalArray;
+    }
 
-        uint256 rentFee = _rentFeeCollected[tokenId];
-        require(rentFee > 0, "no rent fee");
-        _rentFeeCollected[tokenId] = 0;
-
-        (bool sent, ) = payable(msg.sender).call{value: rentFee}(""); // Returns false on failure
+    function withdrawRentFee(uint256[] memory tokenIds) public {
+        uint256[] memory uniqueArray = removeDuplicates(tokenIds);
+        uint256 rentFeeSum = 0;
+        for (uint256 i = 0; i < uniqueArray.length; i++) {
+            address owner = _ownerOf(uniqueArray[i]);
+            if (msg.sender != owner) {
+                revert MustBeNftOwner(owner);
+            }
+            uint256 rentFee = _rentFeeCollected[uniqueArray[i]];
+            if (rentFee > 0) {
+                rentFeeSum += rentFee;
+                _rentFeeCollected[uniqueArray[i]] = 0;
+            }
+        }
+        require(rentFeeSum > 0, "no rent fee");
+        (bool sent, ) = payable(msg.sender).call{value: rentFeeSum}(""); // Returns false on failure
         require(sent, "failed to return Ether");
+    }
+
+    function getWithdrawRentFee(uint256[] memory tokenIds)
+        public
+        view
+        returns (uint256)
+    {
+        uint256[] memory uniqueArray = removeDuplicates(tokenIds);
+        uint256 rentFeeSum = 0;
+        for (uint256 i = 0; i < uniqueArray.length; i++) {
+            address owner = _ownerOf(uniqueArray[i]);
+            if (msg.sender != owner) {
+                revert MustBeNftOwner(owner);
+            }
+            uint256 rentFee = _rentFeeCollected[uniqueArray[i]];
+            rentFeeSum += rentFee;
+        }
+        return rentFeeSum;
     }
 
     function withdrawDevFee(address withdrawTo) public onlyOwner {
@@ -347,9 +408,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //Get Cellula information
-    function getCellGene(
-        uint256 tokenID
-    )
+    function getCellGene(uint256 tokenID)
         public
         view
         returns (
@@ -370,9 +429,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         bornPrice = cell.bornPrice;
     }
 
-    function getRLESting(
-        uint256 tokenId
-    ) public view returns (string memory rleSting) {
+    function getRLESting(uint256 tokenId)
+        public
+        view
+        returns (string memory rleSting)
+    {
         string memory rle = decodeGenes(tokenId);
         rleSting = string(
             abi.encodePacked(
@@ -387,9 +448,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //Serialize and display gene information
-    function getGenesSequence(
-        uint256 tokenID
-    ) public view returns (string memory genes) {
+    function getGenesSequence(uint256 tokenID)
+        public
+        view
+        returns (string memory genes)
+    {
         CellGene storage cell = _cellPool[tokenID];
         string memory result;
         uint256 count = 3 * 3;
@@ -405,9 +468,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return result;
     }
 
-    function decodeGenes(
-        uint256 tokenId
-    ) internal view returns (string memory) {
+    function decodeGenes(uint256 tokenId)
+        internal
+        view
+        returns (string memory)
+    {
         // Convert the bitmap to a 2D array
 
         CellGene storage cell = _cellPool[tokenId];
@@ -463,18 +528,22 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return rle;
     }
 
-    function getEvolutionaryAlgebra(
-        uint256 tokenId
-    ) public view returns (uint256) {
+    function getEvolutionaryAlgebra(uint256 tokenId)
+        public
+        view
+        returns (uint256)
+    {
         uint256 mintBlockNum = _cellPool[tokenId].bornBlock;
         uint256 algebra = ((block.number - mintBlockNum) * BLOCK_TIME) /
             EVOLUTION_TIME;
         return algebra;
     }
 
-    function lifeBaseRules(
-        uint8[9] calldata cellGenes
-    ) public pure returns (uint8) {
+    function lifeBaseRules(uint8[9] calldata cellGenes)
+        public
+        pure
+        returns (uint8)
+    {
         uint8 liveCellNum = 0;
 
         for (uint256 i = 0; i < 9; i++) {
@@ -499,9 +568,11 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return _baseUrl;
     }
 
-    function isCenterCellAlive(
-        uint8[9] memory cells
-    ) public pure returns (bool) {
+    function isCenterCellAlive(uint8[9] memory cells)
+        public
+        pure
+        returns (bool)
+    {
         // Convert a one-dimensional array to a two-dimensional state matrix
         bool[3][3] memory matrix = [
             [false, false, false],
@@ -543,5 +614,10 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
                 return false;
             }
         }
+    }
+
+    function userClaimEnergy(uint256 energy) public returns (uint256) {
+        userEnergy[msg.sender] += energy;
+        return userEnergy[msg.sender];
     }
 }

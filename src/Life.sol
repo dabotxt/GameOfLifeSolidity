@@ -37,7 +37,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         string memory name_,
         string memory symbol_
     ) public initializer {
-        _baseUrl = "https://api.cellula.life/token/";
+        _baseUrl = "https://factoryapi.cellula.fun/lifeToken/";
 
         __ERC721_init(name_, symbol_);
         __Ownable_init(owner_);
