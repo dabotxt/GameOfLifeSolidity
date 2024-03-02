@@ -18,7 +18,7 @@ struct LifeGene {
     uint32 livingCellTotal; // Living cell count
     uint64 bornBlock; // Birth block
     uint64 bornTime; // Birth Timestamp
-    uint64 remainWorkTime;
+    uint64 workEndTime;
     uint256 bornPrice;
     BitMaps.BitMap bitmap; //Original gene information
     uint256[] parentTokenIds;
