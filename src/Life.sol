@@ -31,6 +31,9 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     error FoodNotOnSale(uint256 workTime);
     error EtherNotEnough(uint256 price);
 
+    event LifeCreation(uint256 tokenId);
+    event FeedEvent(uint256 tokenId, uint256 startTime, uint256 workTime);
+
     string private _baseUrl;
 
     /**
@@ -106,6 +109,8 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         newLife.livingCellTotal = cellCount;
 
         _mint(to, newTokenId);
+
+        emit LifeCreation(newTokenId);
     }
 
     function changeFoodPrice(
@@ -132,7 +137,11 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             revert EtherNotEnough(foodPrice);
         }
 
-        _lifePool[tokenID].workEndTime = uint64(block.timestamp + foodWorkTime);
+        uint256 currentTime = block.timestamp;
+
+        _lifePool[tokenID].workEndTime = uint64(currentTime + foodWorkTime);
+
+        emit FeedEvent(tokenID, currentTime, foodWorkTime);
     }
 
     // withdraw eth from the contract
