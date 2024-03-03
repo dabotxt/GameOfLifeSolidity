@@ -22,6 +22,18 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     mapping(uint256 => LifeGene) _lifePool;
 
+    mapping(uint256 workTime => uint256 price) public _foodPrices;
+
+    /**
+     * @dev The caller account is not authorized to perform an operation.
+     */
+    error MustBeNftOwner(address account);
+    error FoodNotOnSale(uint256 workTime);
+    error EtherNotEnough(uint256 price);
+
+    event LifeCreation(uint256 tokenId);
+    event FeedEvent(uint256 tokenId, uint256 startTime, uint256 workTime);
+
     string private _baseUrl;
 
     /**
@@ -97,6 +109,46 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         newLife.livingCellTotal = cellCount;
 
         _mint(to, newTokenId);
+
+        emit LifeCreation(newTokenId);
+    }
+
+    function changeFoodPrice(
+        uint256[] memory foodWorkTimes,
+        uint256[] memory foodPrices
+    ) external onlyOwner {
+        require(foodWorkTimes.length == foodPrices.length, "invalid params");
+        for (uint i = 0; i < foodWorkTimes.length; i++) {
+            _foodPrices[foodWorkTimes[i]] = foodPrices[i];
+        }
+    }
+
+    function buyFood(uint256 tokenID, uint256 foodWorkTime) external payable {
+        address owner = _ownerOf(tokenID);
+        if (msg.sender != owner) {
+            revert MustBeNftOwner(owner);
+        }
+        uint256 foodPrice = _foodPrices[foodWorkTime];
+        if (foodPrice <= 0) {
+            revert FoodNotOnSale(foodWorkTime);
+        }
+
+        if (msg.value < foodPrice) {
+            revert EtherNotEnough(foodPrice);
+        }
+
+        uint256 currentTime = block.timestamp;
+
+        _lifePool[tokenID].workEndTime = uint64(currentTime + foodWorkTime);
+
+        emit FeedEvent(tokenID, currentTime, foodWorkTime);
+    }
+
+    // withdraw eth from the contract
+    function withdraw(uint256 amount, address receiver) public onlyOwner {
+        require(amount <= address(this).balance, "Insufficient balance");
+        (bool sent, ) = payable(receiver).call{value: amount}(""); // Returns false on failure
+        require(sent, "failed to return Ether");
     }
 
     //Get Cellula information
@@ -110,7 +162,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
             uint256 bornBlock,
             uint256 livingCellTotal,
             uint64 bornTime,
-            uint64 remainWorkTime,
+            uint64 workEndTime,
             uint256 bornPrice,
             uint256[] memory parentTokenIds
         )
@@ -120,7 +172,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         livingCellTotal = cell.livingCellTotal;
         genes = getGenesSequence(tokenID);
         bornTime = cell.bornTime;
-        remainWorkTime = cell.remainWorkTime;
+        workEndTime = cell.workEndTime;
         bornPrice = cell.bornPrice;
         parentTokenIds = cell.parentTokenIds;
     }
