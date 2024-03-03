@@ -369,10 +369,6 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         uint256[] memory uniqueArray = removeDuplicates(tokenIds);
         uint256 rentFeeSum = 0;
         for (uint256 i = 0; i < uniqueArray.length; i++) {
-            address owner = _ownerOf(uniqueArray[i]);
-            if (msg.sender != owner) {
-                revert MustBeNftOwner(owner);
-            }
             uint256 rentFee = _rentFeeCollected[uniqueArray[i]];
             rentFeeSum += rentFee;
         }
