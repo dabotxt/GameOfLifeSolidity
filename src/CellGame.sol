@@ -612,8 +612,4 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function userClaimEnergy(uint256 energy) public returns (uint256) {
-        userEnergy[msg.sender] += energy;
-        return userEnergy[msg.sender];
-    }
 }
