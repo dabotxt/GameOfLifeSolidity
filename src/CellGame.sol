@@ -316,7 +316,7 @@ contract CellGame is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function removeDuplicates(uint256[] memory array)
-        public
+        internal
         pure
         returns (uint256[] memory)
     {
