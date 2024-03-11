@@ -22,7 +22,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
 
     mapping(uint256 => LifeGene) _lifePool;
 
-    mapping(uint256 workTime => uint256 price) public _foodPrices;
+    mapping(uint256 => uint256) public _foodPrices;
 
     /**
      * @dev The caller account is not authorized to perform an operation.
@@ -118,30 +118,35 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         uint256[] memory foodPrices
     ) external onlyOwner {
         require(foodWorkTimes.length == foodPrices.length, "invalid params");
-        for (uint i = 0; i < foodWorkTimes.length; i++) {
+        for (uint256 i = 0; i < foodWorkTimes.length; i++) {
             _foodPrices[foodWorkTimes[i]] = foodPrices[i];
         }
     }
 
-    function buyFood(uint256 tokenID, uint256 foodWorkTime) external payable {
-        address owner = _ownerOf(tokenID);
-        if (msg.sender != owner) {
-            revert MustBeNftOwner(owner);
-        }
+    function buyFood(uint256[] memory tokenIds, uint256 foodWorkTime)
+        external
+        payable
+    {
         uint256 foodPrice = _foodPrices[foodWorkTime];
         if (foodPrice <= 0) {
             revert FoodNotOnSale(foodWorkTime);
         }
-
-        if (msg.value < foodPrice) {
-            revert EtherNotEnough(foodPrice);
-        }
-
+        uint256 foodPriceSum = 0;
         uint256 currentTime = block.timestamp;
-
-        _lifePool[tokenID].workEndTime = uint64(currentTime + foodWorkTime);
-
-        emit FeedEvent(tokenID, currentTime, foodWorkTime);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            address owner = _ownerOf(tokenIds[i]);
+            if (msg.sender != owner) {
+                revert MustBeNftOwner(owner);
+            }
+            foodPriceSum += foodPrice;
+            _lifePool[tokenIds[i]].workEndTime = uint64(
+                currentTime + foodWorkTime
+            );
+            emit FeedEvent(tokenIds[i], currentTime, foodWorkTime);
+        }
+        if (msg.value < foodPriceSum) {
+            revert EtherNotEnough(foodPriceSum);
+        }
     }
 
     // withdraw eth from the contract
@@ -152,9 +157,7 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //Get Cellula information
-    function getLifeGene(
-        uint256 tokenID
-    )
+    function getLifeGene(uint256 tokenID)
         public
         view
         returns (
@@ -177,9 +180,11 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         parentTokenIds = cell.parentTokenIds;
     }
 
-    function getRLESting(
-        uint256 tokenId
-    ) public view returns (string memory rleSting) {
+    function getRLESting(uint256 tokenId)
+        public
+        view
+        returns (string memory rleSting)
+    {
         string memory rle = decodeGenes(tokenId);
         rleSting = string(
             abi.encodePacked(
@@ -194,9 +199,11 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     //Serialize and display gene information
-    function getGenesSequence(
-        uint256 tokenID
-    ) public view returns (string memory genes) {
+    function getGenesSequence(uint256 tokenID)
+        public
+        view
+        returns (string memory genes)
+    {
         LifeGene storage cell = _lifePool[tokenID];
         string memory result;
         uint256 count = 9 * 9;
@@ -212,9 +219,11 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return result;
     }
 
-    function decodeGenes(
-        uint256 tokenId
-    ) internal view returns (string memory) {
+    function decodeGenes(uint256 tokenId)
+        internal
+        view
+        returns (string memory)
+    {
         // Convert the bitmap to a 2D array
 
         LifeGene storage cell = _lifePool[tokenId];
@@ -270,18 +279,22 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return rle;
     }
 
-    function getEvolutionaryAlgebra(
-        uint256 tokenId
-    ) public view returns (uint256) {
+    function getEvolutionaryAlgebra(uint256 tokenId)
+        public
+        view
+        returns (uint256)
+    {
         uint256 mintBlockNum = _lifePool[tokenId].bornBlock;
         uint256 algebra = ((block.number - mintBlockNum) * BLOCK_TIME) /
             EVOLUTION_TIME;
         return algebra;
     }
 
-    function lifeBaseRules(
-        uint8[9] calldata cellGenes
-    ) public pure returns (uint8) {
+    function lifeBaseRules(uint8[9] calldata cellGenes)
+        public
+        pure
+        returns (uint8)
+    {
         uint8 liveCellNum = 0;
 
         for (uint256 i = 0; i < 9; i++) {
@@ -305,9 +318,11 @@ contract Life is ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
         return _baseUrl;
     }
 
-    function isCenterCellAlive(
-        uint8[9] memory cells
-    ) public pure returns (bool) {
+    function isCenterCellAlive(uint8[9] memory cells)
+        public
+        pure
+        returns (bool)
+    {
         // Convert a one-dimensional array to a two-dimensional state matrix
         bool[3][3] memory matrix = [
             [false, false, false],
